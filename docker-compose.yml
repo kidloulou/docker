@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: clienthub-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: clienthub_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./bdd/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - clienthub-net
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  api:
+    build: ./app
+    container_name: clienthub-api
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_NAME: clienthub_db
+      DB_USER: user
+      DB_PASSWORD: password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - clienthub-net
+
+  web:
+    image: nginx:latest
+    container_name: clienthub-web
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./site:/usr/share/nginx/html
+    networks:
+      - clienthub-net
+
+volumes:
+  mysql_data:
+
+networks:
+  clienthub-net:
+    driver: bridge
